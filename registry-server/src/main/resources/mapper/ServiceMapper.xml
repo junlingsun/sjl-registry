@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junling.registry.server.dao.ServiceDao" >
+
+    <resultMap id="ServiceEntity" type="com.junling.registry.server.entity.ServiceEntity" >
+        <result column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="address" property="address" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="column">
+        id,
+        name,
+        address,
+        update_time
+    </sql>
+
+    <update id="update" parameterType="com.junling.registry.server.entity.ServiceEntity">
+        UPDATE t_service
+        SET update_time = NOW()
+        WHERE name = #{serviceEntity.name} AND address = #{serviceEntity.address}
+    </update>
+
+    <insert id="save" parameterType="com.junling.registry.server.entity.ServiceEntity">
+        INSERT INTO t_service (name, address, update_time)
+        VALUES (#{serviceEntity.name}, #{serviceEntity.address}, NOW())
+    </insert>
+
+    <select id="findAll" resultMap="ServiceEntity">
+        SELECT <include refid="column" /> FROM t_service
+        WHERE name = #{name}
+    </select>
+
+    <delete id="delete">
+        DELETE FROM t_service
+        WHERE name=#{serviceEntity.name} AND address = #{serviceEntity.address}
+    </delete>
+
+
+</mapper>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junling.registry.server.dao.RegistryDao" >
+
+    <resultMap id="RegistryEntity" type="com.junling.registry.server.entity.RegistryEntity" >
+        <result column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="data" property="data" />
+    </resultMap>
+
+    <sql id="column">
+        id,
+        name,
+        data
+    </sql>
+
+    <select id="findByName" resultMap="RegistryEntity">
+        SELECT <include refid="column" /> FROM t_registry
+        WHERE name = #{name}
+    </select>
+
+    <insert id="save" parameterType="com.junling.registry.server.entity.RegistryEntity">
+        INSERT INTO t_registry (name, data)
+        VALUES (#{registryEntity.name}, #{registryEntity.data})
+    </insert>
+
+    <update id="update">
+        UPDATE t_registry SET data=#{data}
+        WHERE name = #{name}
+    </update>
+
+
+</mapper>
