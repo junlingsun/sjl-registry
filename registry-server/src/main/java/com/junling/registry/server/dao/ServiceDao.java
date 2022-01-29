@@ -15,4 +15,6 @@ public interface ServiceDao {
     List<ServiceEntity> findAll(@Param("name") String name);
 
     void delete(@Param("serviceEntity") ServiceEntity serviceEntity);
+
+    void cleanExpiredData(@Param("expirationTime") int expirationTime);
 }

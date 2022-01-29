@@ -38,5 +38,10 @@
         WHERE name=#{serviceEntity.name} AND address = #{serviceEntity.address}
     </delete>
 
+    <delete id="cleanExpiredData">
+        DELETE from t_service
+        WHERE NOW() <![CDATA[>]]> DATE_ADD (update_time, interval #{expirationTime} SECOND)
+    </delete>
+
 
 </mapper>

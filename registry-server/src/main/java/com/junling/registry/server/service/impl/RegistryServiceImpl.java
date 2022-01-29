@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -30,6 +31,7 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
 
     private volatile Map<String, List<DeferredResult<R>>> map = new ConcurrentHashMap<>();
     private final Long TIME_OUT = 30000L;
+    private final Integer BEAT_TIME = 10; //time unit second
 
 
     private static ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new LinkedBlockingDeque<>(5));
@@ -172,6 +174,45 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             }
         });
 
+        //clean expired db and file data
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                while(!executorStop) {
+                    List<String> deletedRegistryList = new ArrayList<>();
+
+                    serviceDao.cleanExpiredData(BEAT_TIME * 3);
+                    List<RegistryEntity> registryEntities = registryDao.findAll();
+                    for (RegistryEntity registryEntity: registryEntities) {
+                        String name = registryEntity.getName();
+                        List<ServiceEntity> serviceEntities = serviceDao.findAll(name);
+
+
+                        //all services w/ the service name is completely gone.
+                        if (serviceEntities == null || serviceEntities.size()==0) {
+                            registryDao.deletebyName(name);
+                            deletedRegistryList.add(name);
+                            continue;
+                        }
+
+                        List<String> serviceAddressList = new ArrayList<>();
+                        serviceEntities.forEach(entity->{
+                            serviceAddressList.add(entity.getAddress());
+                        });
+                        String updateData = JSON.toJSONString(serviceAddressList);
+                        String registryData = registryEntity.getData();
+
+                        if (!updateData.equals(registryData)) {
+                            registryDao.update(name, updateData);
+                            refreshFile(registryEntity);
+                        }
+                    }
+
+                    cleanFileData(deletedRegistryList);
+                }
+            }
+        });
+
 
 
     }
@@ -215,6 +256,14 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             for (DeferredResult<R> result: deferredResults) {
                 result.setResult(new R(R.SUCCESS_CODE, "monitor updated"));
             }
+        }
+    }
+
+    private void cleanFileData(List<String> deletedRegistryList){
+        for (String name: deletedRegistryList) {
+            String path = registryFileDir+"/"+name;
+            File file = new File(path);
+            if (file.exists()) file.delete();
         }
     }
 
