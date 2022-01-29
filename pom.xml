@@ -17,6 +17,7 @@
     <modules>
         <module>registry-server</module>
         <module>registry-client</module>
+        <module>registry-common</module>
     </modules>
 
 </project>
