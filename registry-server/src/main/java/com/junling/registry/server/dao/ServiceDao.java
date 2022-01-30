@@ -16,5 +16,5 @@ public interface ServiceDao {
 
     void delete(@Param("serviceEntity") ServiceEntity serviceEntity);
 
-    void cleanExpiredData(@Param("expirationTime") int expirationTime);
+    void cleanExpiredData(@Param("timeout") int timeout);
 }

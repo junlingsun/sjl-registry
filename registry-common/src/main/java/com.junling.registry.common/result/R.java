@@ -9,9 +9,15 @@ public class R {
 
     private Integer code;
     private String msg;
-    private Object data;
+    private String data;
 
-    public R (Object data) {
+    public R (Integer code, String msg, String data) {
+        this.code = code;
+        this.msg = msg;
+        this.data = data;
+    }
+
+    public R (String data) {
         this.code = SUCCESS_CODE;
         this.msg = "success";
         this.data = data;
@@ -38,7 +44,7 @@ public class R {
         return code;
     }
 
-    public Object getData() {
+    public String getData() {
         return data;
     }
 
@@ -50,7 +56,7 @@ public class R {
         this.code = code;
     }
 
-    public void setData(Object data) {
+    public void setData(String data) {
         this.data = data;
     }
 }

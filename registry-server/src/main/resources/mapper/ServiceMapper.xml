@@ -39,8 +39,8 @@
     </delete>
 
     <delete id="cleanExpiredData">
-        DELETE from t_service
-        WHERE NOW() <![CDATA[>]]> DATE_ADD (update_time, interval #{expirationTime} SECOND)
+        DELETE FROM t_service
+        WHERE NOW() <![CDATA[ > ]]> DATE_ADD(update_time, Interval #{timeout} SECOND)
     </delete>
 
 

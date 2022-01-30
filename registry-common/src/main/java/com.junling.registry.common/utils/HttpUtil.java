@@ -14,7 +14,6 @@ public class HttpUtil {
         BufferedReader bufferedReader = null;
 
         try{
-
             URL urlObj = new URL(url);
             connection = (HttpURLConnection) urlObj.openConnection();
 
@@ -22,8 +21,8 @@ public class HttpUtil {
             connection.setDoOutput(true);
             connection.setDoInput(true);
             connection.setUseCaches(false);
-            connection.setReadTimeout(timeout * 1000);
-            connection.setConnectTimeout(3 * 1000);
+            connection.setReadTimeout(timeout * 10000);
+            connection.setConnectTimeout(3 * 10000);
             connection.setRequestProperty("connection", "Keep-Alive");
             connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
             connection.setRequestProperty("Accept-Charset", "application/json;charset=UTF-8");

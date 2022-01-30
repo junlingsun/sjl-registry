@@ -52,7 +52,8 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             return new R(R.FAIL_CODE, "registry data is empty");
         }
         List<ServiceEntity> serviceEntities = JSON.parseArray(data, ServiceEntity.class);
-       registryQueue.addAll(serviceEntities);
+        registryQueue.addAll(serviceEntities);
+
         return R.SUCCESS();
     }
 
@@ -84,7 +85,8 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
                 map.put(registryKey, new TreeSet<>(list));
             }
         }
-        return new R(map);
+
+        return new R(JSON.toJSONString(map));
     }
 
     @Override
@@ -103,7 +105,6 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             map.get(registryKey).add(deferredResult);
         }
 
-
         return deferredResult;
     }
 
@@ -115,6 +116,7 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             @Override
             public void run() {
                 while(!executorStop) {
+
                     try {
                         ServiceEntity service = registryQueue.take();
                         if (service != null) {
@@ -141,6 +143,7 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             @Override
             public void run() {
                 while(!executorStop) {
+
                     try {
                         ServiceEntity serviceEntity = removeQueue.take();
                         if (serviceEntity != null) {
@@ -160,6 +163,7 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             @Override
             public void run() {
                 while(!executorStop) {
+
                     try {
                         RegistryEntity registryEntity = messageQueue.take();
                         if (registryEntity != null) {
@@ -179,36 +183,38 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
             @Override
             public void run() {
                 while(!executorStop) {
-                    List<String> deletedRegistryList = new ArrayList<>();
+                    List<String> filePaths = new ArrayList<>();
 
-                    serviceDao.cleanExpiredData(BEAT_TIME * 3);
-                    List<RegistryEntity> registryEntities = registryDao.findAll();
+                    serviceDao.cleanExpiredData(BEAT_TIME * 3); //remove expire service entities
+                    List<RegistryEntity> registryEntities = registryDao.findAll(); //find all registry entities and iterate each one
                     for (RegistryEntity registryEntity: registryEntities) {
                         String name = registryEntity.getName();
                         List<ServiceEntity> serviceEntities = serviceDao.findAll(name);
 
 
-                        //all services w/ the service name is completely gone.
-                        if (serviceEntities == null || serviceEntities.size()==0) {
-                            registryDao.deletebyName(name);
-                            deletedRegistryList.add(name);
-                            continue;
-                        }
-
                         List<String> serviceAddressList = new ArrayList<>();
                         serviceEntities.forEach(entity->{
                             serviceAddressList.add(entity.getAddress());
                         });
-                        String updateData = JSON.toJSONString(serviceAddressList);
+                        String updateData = JSON.toJSONString(serviceAddressList); //check the current active service entities, can be zero, which is empty list
                         String registryData = registryEntity.getData();
 
                         if (!updateData.equals(registryData)) {
                             registryDao.update(name, updateData);
-                            refreshFile(registryEntity);
                         }
+
+                        String filePath = refreshFile(registryEntity);
+                        filePaths.add(filePath);
                     }
 
-                    cleanFileData(deletedRegistryList);
+                    cleanFileData(filePaths);
+
+                    try {
+                        TimeUnit.SECONDS.sleep(BEAT_TIME);
+                    }
+                    catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         });
@@ -216,6 +222,7 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
 
 
     }
+
 
     private void refreshAndNotify(String name) {
         List<ServiceEntity> serviceEntities = serviceDao.findAll(name);
@@ -227,13 +234,14 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
         }
         String updateData = JSON.toJSONString(addressList);
 
+        //update t_registry: data property can be null or empty.
         RegistryEntity registryEntity = registryDao.findByName(name);
         boolean sendMessage = false;
         if (registryEntity == null) {
             registryEntity = new RegistryEntity();
             registryEntity.setName(name);
             registryEntity.setData(updateData);
-            registryDao.save(registryEntity); //TODO: it's possible updateData is null;
+            registryDao.save(registryEntity);
             sendMessage = true;
         }else {
             if (!registryEntity.getData().equals(updateData)) {
@@ -247,24 +255,34 @@ public class RegistryServiceImpl implements RegistryService, InitializingBean {
         }
     }
 
-    private void refreshFile(RegistryEntity registryEntity) {
+    private String refreshFile(RegistryEntity registryEntity) {
         String filePath = registryFileDir + "/" + registryEntity.getName();
         FileUtil.write(filePath, registryEntity.getData());
 
+
         List<DeferredResult<R>> deferredResults = map.get(registryEntity.getName());
+        map.remove(registryEntity.getName());
         if (deferredResults != null && deferredResults.size() > 0) {
             for (DeferredResult<R> result: deferredResults) {
                 result.setResult(new R(R.SUCCESS_CODE, "monitor updated"));
             }
         }
+
+        return new File(filePath).getPath();
     }
 
-    private void cleanFileData(List<String> deletedRegistryList){
-        for (String name: deletedRegistryList) {
-            String path = registryFileDir+"/"+name;
-            File file = new File(path);
-            if (file.exists()) file.delete();
+    private void cleanFileData(List<String> filePaths){
+        String parentDir = registryFileDir;
+        File parent = new File(parentDir);
+        File[] files = parent.listFiles();
+        if (files != null && files.length > 0) {
+            for (File file: files) {
+                if (filePaths.contains(file.getPath())) {
+                    file.delete();
+                }
+            }
         }
+
     }
 
 }

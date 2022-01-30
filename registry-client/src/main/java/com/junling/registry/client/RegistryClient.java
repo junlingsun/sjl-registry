@@ -1,6 +1,7 @@
 package com.junling.registry.client;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.junling.registry.common.entity.Service;
 import com.junling.registry.common.result.R;
 import com.junling.registry.common.utils.HttpUtil;
@@ -89,7 +90,8 @@ public class RegistryClient {
         services.addAll(serviceList);
         String jsonData = JSON.toJSONString(serviceList);
         String url = host + ":" + port +"/registry/register";
-        R ret = postRequest(url, jsonData, 5);
+        String response = postRequest(url, jsonData, 5);
+        R ret = JSON.parseObject(response, R.class);
         return ret.getCode().equals(R.SUCCESS_CODE);
     }
 
@@ -102,8 +104,11 @@ public class RegistryClient {
 
         String jsonData = JSON.toJSONString(keySet);
         String url = host + ":" + port + "/registry/discover";
-        R ret = postRequest(url, jsonData, 5);
-        Map<String, TreeSet<String>> map = JSON.parseObject(ret.getData().toString(), Map.class);
+        String response = postRequest(url, jsonData, 5);
+        R ret = JSON.parseObject(response, R.class);
+
+        if (ret.getData()==null) return null;
+        Map<String, TreeSet<String>> map = JSON.parseObject(ret.getData().toString(), new TypeReference<Map<String, TreeSet<String>>>(){});
         if (map == null || map.size() == 0) return map;
 
         //add the discovered services to map
@@ -121,7 +126,9 @@ public class RegistryClient {
     public boolean monitor(Set<String> keySet) {
         String jsonData = JSON.toJSONString(keySet);
         String url = host+":"+port+"/registry/monitor";
-        R ret = postRequest(url, jsonData, 5);
+        String response = postRequest(url, jsonData, 5);
+        R ret = JSON.parseObject(response, R.class);
+        if (ret == null) return false;
         return ret.getCode().equals(R.SUCCESS_CODE);
     }
 
@@ -136,8 +143,9 @@ public class RegistryClient {
 
         String jsonData = JSON.toJSONString(serviceList);
         String url = host+":" + port + "/registry/remove";
-        R r = postRequest(url, jsonData, 5);
-        return r.getCode().equals(R.SUCCESS_CODE);
+        String response = postRequest(url, jsonData, 5);
+        R ret = JSON.parseObject(response, R.class);
+        return ret.getCode().equals(R.SUCCESS_CODE);
     }
 
     /**
@@ -146,9 +154,9 @@ public class RegistryClient {
      * @param jsonData
      * @return
      */
-    private R postRequest(String url, String jsonData, Integer timeOut) {
-        String ret = HttpUtil.post(url, jsonData, timeOut);
-        return JSON.parseObject(ret, R.class);
+    private String postRequest(String url, String jsonData, Integer timeOut) {
+        String res = HttpUtil.post(url, jsonData, timeOut);
+        return res;
     }
 
 }
